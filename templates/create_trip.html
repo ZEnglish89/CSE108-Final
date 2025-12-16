@@ -1,21 +1,767 @@
-<h2>Create Flight Trip</h2>
-
-<form method="post">
-    <label>Origin:</label>
-    <select name="origin">
-        {% for code in airports %}
-            <option value="{{ code }}">{{ code }}</option>
-        {% endfor %}
-    </select>
-
-    <label>Destination:</label>
-    <select name="destination">
-        {% for code in airports %}
-            <option value="{{ code }}">{{ code }}</option>
-        {% endfor %}
-    </select>
-
-    <button type="submit">Add Trip</button>
-</form>
-
-<a href="/">Back to Dashboard</a>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% if edit_mode %}Edit{% else %}Create{% endif %} Flight Trip</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .form-group {
+            margin: 20px 0;
+            position: relative;
+        }
+        
+        .search-box {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            margin-top: 5px;
+            transition: border-color 0.3s;
+        }
+        
+        .search-box:focus {
+            border-color: #0066cc;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+        }
+        
+        .airport-results {
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 5px;
+            background: white;
+            display: none;
+            position: absolute;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .airport-option {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .airport-option:hover {
+            background-color: #f0f8ff;
+        }
+        
+        .airport-option.selected {
+            background-color: #e8f4fd;
+            border-left: 3px solid #0066cc;
+        }
+        
+        .airport-code {
+            font-weight: bold;
+            color: #0066cc;
+        }
+        
+        .selected-airport {
+            background-color: #e8f4fd;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            border: 2px solid #b3d9ff;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .selected-airport .airport-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .clear-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #666;
+            cursor: pointer;
+            padding: 0 5px;
+            transition: color 0.2s;
+        }
+        
+        .clear-btn:hover {
+            color: #ff4444;
+        }
+        
+        button[type="submit"] {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+            transition: background-color 0.3s;
+            font-weight: bold;
+        }
+        
+        button[type="submit"]:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        button[type="submit"]:not(:disabled):hover {
+            background-color: #0052a3;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #0066cc;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        
+        .back-link:hover {
+            text-decoration: none;
+            background-color: #f0f8ff;
+        }
+        
+        .search-wrapper {
+            position: relative;
+        }
+        
+        .loading {
+            color: #666;
+            font-style: italic;
+            padding: 15px;
+            text-align: center;
+            background: #f9f9f9;
+        }
+        
+        .error-message {
+            color: #ff4444;
+            padding: 10px;
+            background: #ffe6e6;
+            border-radius: 4px;
+            margin-top: 5px;
+            display: none;
+            border-left: 3px solid #ff4444;
+        }
+        
+        .success-message {
+            color: #00a859;
+            padding: 10px;
+            background: #e6ffe6;
+            border-radius: 4px;
+            margin-top: 5px;
+            display: none;
+            border-left: 3px solid #00a859;
+        }
+        
+        .form-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .edit-banner {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .edit-banner i {
+            font-size: 20px;
+        }
+        
+        .distance-estimate {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border-left: 3px solid #00cc66;
+            display: none;
+        }
+        
+        .info-text {
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        
+        /* Switch for one-way/round trip */
+        .trip-type {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .trip-type label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 10px 15px;
+            border-radius: 6px;
+            background: #f5f5f5;
+            transition: all 0.2s;
+        }
+        
+        .trip-type input[type="radio"] {
+            display: none;
+        }
+        
+        .trip-type input[type="radio"]:checked + span {
+            background: #0066cc;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+        }
+        
+        .form-footer {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .form-footer button[type="submit"] {
+            flex: 2;
+        }
+        
+        .form-footer .back-link {
+            flex: 1;
+            text-align: center;
+            background: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Edit Mode Banner -->
+        {% if edit_mode %}
+        <div class="edit-banner">
+            <i class="fas fa-edit"></i>
+            <div>
+                <strong>✏️ Editing Flight Trip</strong>
+                <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;">Update your flight details below.</p>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="form-header">
+            <h2>{% if edit_mode %}Edit{% else %}Create{% endif %} Flight Trip</h2>
+            <div class="info-text">
+                <i class="fas fa-info-circle"></i> Search by airport code, city, or name
+            </div>
+        </div>
+        
+        <form method="post" id="trip-form">
+            <!-- Trip Type (Optional Feature) -->
+            <!--
+            <div class="trip-type">
+                <label>
+                    <input type="radio" name="trip_type" value="one_way" checked>
+                    <span>One Way</span>
+                </label>
+                <label>
+                    <input type="radio" name="trip_type" value="round_trip">
+                    <span>Round Trip</span>
+                </label>
+            </div>
+            -->
+            
+            <!-- Origin Airport -->
+            <div class="form-group">
+                <label for="origin-search">
+                    <i class="fas fa-plane-departure" style="color: #0066cc;"></i>
+                    Origin Airport:
+                </label>
+                <div class="search-wrapper">
+                    <input type="text" 
+                           id="origin-search" 
+                           class="search-box" 
+                           placeholder="Search by airport code (LAX, JFK), city, or name..."
+                           autocomplete="off"
+                           {% if edit_mode and current_origin %}value="{{ current_origin }}"{% endif %}>
+                    <div id="origin-results" class="airport-results"></div>
+                </div>
+                <div id="origin-error" class="error-message"></div>
+                <div id="origin-selected" class="selected-airport">
+                    <div class="airport-info">
+                        <span>
+                            <span class="airport-code" id="origin-code"></span> - 
+                            <span id="origin-name"></span>
+                        </span>
+                        <button type="button" class="clear-btn" onclick="clearSelection('origin')" title="Clear selection">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <small id="origin-location"></small>
+                </div>
+                <input type="hidden" name="origin" id="origin-input" required>
+            </div>
+            
+            <!-- Destination Airport -->
+            <div class="form-group">
+                <label for="dest-search">
+                    <i class="fas fa-plane-arrival" style="color: #00cc66;"></i>
+                    Destination Airport:
+                </label>
+                <div class="search-wrapper">
+                    <input type="text" 
+                           id="dest-search" 
+                           class="search-box" 
+                           placeholder="Search by airport code (LAX, JFK), city, or name..."
+                           autocomplete="off"
+                           {% if edit_mode and current_dest %}value="{{ current_dest }}"{% endif %}>
+                    <div id="dest-results" class="airport-results"></div>
+                </div>
+                <div id="dest-error" class="error-message"></div>
+                <div id="dest-selected" class="selected-airport">
+                    <div class="airport-info">
+                        <span>
+                            <span class="airport-code" id="dest-code"></span> - 
+                            <span id="dest-name"></span>
+                        </span>
+                        <button type="button" class="clear-btn" onclick="clearSelection('dest')" title="Clear selection">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <small id="dest-location"></small>
+                </div>
+                <input type="hidden" name="destination" id="dest-input" required>
+            </div>
+            
+            <!-- Distance Estimate (Dynamic) -->
+            <div id="distance-estimate" class="distance-estimate">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong>Estimated Distance:</strong>
+                        <div id="distance-value" style="font-size: 24px; font-weight: bold; color: #0066cc;">0 km</div>
+                    </div>
+                    <div>
+                        <strong>Estimated CO₂ Emissions:</strong>
+                        <div id="emissions-value" style="font-size: 24px; font-weight: bold; color: #00cc66;">0 kg</div>
+                    </div>
+                </div>
+                <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                    <i class="fas fa-leaf"></i> That's equivalent to <span id="tree-equivalent">0</span> trees needed to absorb this CO₂
+                </div>
+            </div>
+            
+            <!-- Submit Button -->
+            <div class="form-footer">
+                <button type="submit" id="submit-btn" disabled>
+                    <i class="fas fa-{% if edit_mode %}save{% else %}plus{% endif %}"></i>
+                    {% if edit_mode %}Update{% else %}Add{% endif %} Flight Trip
+                </button>
+                <a href="/" class="back-link">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+            
+            <!-- Success Message -->
+            <div id="success-message" class="success-message">
+                <i class="fas fa-check-circle"></i> Trip added successfully! Redirecting...
+            </div>
+        </form>
+        
+        <!-- Fallback for browsers without JS -->
+        <noscript>
+            <style>
+                .search-wrapper, .distance-estimate, .form-footer button { display: none; }
+            </style>
+            <hr>
+            <h3>Select Airports (JavaScript Required)</h3>
+            <p>Please enable JavaScript to use the interactive airport search.</p>
+            <div style="background: #fff3cd; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107;">
+                <strong>Note:</strong> This page requires JavaScript for the airport search feature.
+            </div>
+        </noscript>
+    </div>
+    
+    <!-- Font Awesome for icons -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    
+    <script>
+        // ========== CONFIGURATION ==========
+        const CONFIG = {
+            debounceDelay: 300,        // Delay before searching
+            minSearchLength: 2,        // Minimum characters to search
+            treeFactor: 21,            // kg CO2 per tree per year
+            emissionsFactor: 0.115     // kg CO2 per km
+        };
+        
+        // ========== STATE MANAGEMENT ==========
+        let state = {
+            origin: null,
+            destination: null,
+            searchTimeout: null,
+            currentSearch: { origin: null, dest: null }
+        };
+        
+        // ========== EVENT LISTENERS ==========
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize search inputs
+            document.getElementById('origin-search').addEventListener('input', (e) => {
+                handleSearch(e.target.value, 'origin');
+            });
+            
+            document.getElementById('dest-search').addEventListener('input', (e) => {
+                handleSearch(e.target.value, 'dest');
+            });
+            
+            // Pre-select airports in edit mode
+            {% if edit_mode and current_origin and current_dest %}
+            setTimeout(() => {
+                console.log('Edit mode detected, pre-selecting airports...');
+                // Auto-search for the pre-filled values
+                if ('{{ current_origin }}'.trim()) {
+                    document.getElementById('origin-search').value = '{{ current_origin }}';
+                    handleSearch('{{ current_origin }}', 'origin');
+                }
+                if ('{{ current_dest }}'.trim()) {
+                    document.getElementById('dest-search').value = '{{ current_dest }}';
+                    handleSearch('{{ current_dest }}', 'dest');
+                }
+            }, 1000);
+            {% endif %}
+            
+            // Close results when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.search-wrapper')) {
+                    hideResults('origin');
+                    hideResults('dest');
+                }
+            });
+            
+            // Form submission handler
+            document.getElementById('trip-form').addEventListener('submit', function(e) {
+                if (!validateForm()) {
+                    e.preventDefault();
+                    return;
+                }
+                
+                // Show loading state
+                const submitBtn = document.getElementById('submit-btn');
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                submitBtn.disabled = true;
+                
+                // Show success message
+                document.getElementById('success-message').style.display = 'block';
+            });
+        });
+        
+        // ========== SEARCH FUNCTIONS ==========
+        function handleSearch(query, type) {
+            clearTimeout(state.searchTimeout);
+            hideError(type);
+            
+            const trimmedQuery = query.trim();
+            
+            if (!trimmedQuery || trimmedQuery.length < CONFIG.minSearchLength) {
+                hideResults(type);
+                return;
+            }
+            
+            // Show loading indicator
+            showLoading(type);
+            
+            // Debounce the search
+            state.searchTimeout = setTimeout(() => {
+                performSearch(trimmedQuery, type);
+            }, CONFIG.debounceDelay);
+        }
+        
+        async function performSearch(query, type) {
+            try {
+                const response = await fetch(`/api/airports/search?q=${encodeURIComponent(query)}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Search failed: ${response.status}`);
+                }
+                
+                const airports = await response.json();
+                
+                if (airports && airports.length > 0) {
+                    displayResults(airports, type);
+                } else {
+                    showNoResults(type, query);
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                showError(type, 'Search failed. Please try again.');
+                hideResults(type);
+            }
+        }
+        
+        function displayResults(airports, type) {
+            const resultsDiv = document.getElementById(`${type}-results`);
+            
+            resultsDiv.innerHTML = airports.map(airport => {
+                const safeData = {
+                    iata: escapeHtml(airport.iata || ''),
+                    icao: escapeHtml(airport.icao || ''),
+                    name: escapeHtml(airport.name || ''),
+                    city: escapeHtml(airport.city || ''),
+                    country: escapeHtml(airport.country || ''),
+                    lat: airport.latitude || 0,
+                    lng: airport.longitude || 0
+                };
+                
+                // Check if this is pre-selected in edit mode
+                const isPreselected = (
+                    (type === 'origin' && '{{ current_origin }}' === safeData.iata) ||
+                    (type === 'dest' && '{{ current_dest }}' === safeData.iata)
+                );
+                
+                return `
+                    <div class="airport-option ${isPreselected ? 'selected' : ''}" 
+                         onclick="selectAirport('${type}', ${JSON.stringify(safeData).replace(/"/g, '&quot;')})"
+                         data-iata="${safeData.iata}"
+                         ${isPreselected ? 'id="preselected-' + type + '"' : ''}>
+                        <div>
+                            <strong class="airport-code">${safeData.iata}</strong>
+                            ${safeData.icao ? `<small style="color: #666;">(${safeData.icao})</small>` : ''}
+                        </div>
+                        <div>${safeData.name}</div>
+                        <small style="color: #666;">${safeData.city}, ${safeData.country}</small>
+                    </div>
+                `;
+            }).join('');
+            
+            resultsDiv.style.display = 'block';
+            
+            // Auto-select if pre-selected in edit mode
+            {% if edit_mode %}
+            setTimeout(() => {
+                const preselected = document.getElementById(`preselected-${type}`);
+                if (preselected) {
+                    preselected.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    const data = {
+                        iata: '{{ current_origin if type == "origin" else current_dest }}',
+                        name: preselected.querySelector('div:nth-child(2)').textContent,
+                        city: preselected.querySelector('small').textContent.split(',')[0].trim(),
+                        country: preselected.querySelector('small').textContent.split(',')[1].trim(),
+                        icao: preselected.querySelector('small:nth-child(1)')?.textContent?.match(/\(([^)]+)\)/)?.[1] || ''
+                    };
+                    selectAirport(type, data);
+                }
+            }, 100);
+            {% endif %}
+        }
+        
+        function showLoading(type) {
+            const resultsDiv = document.getElementById(`${type}-results`);
+            resultsDiv.innerHTML = `
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> Searching airports...
+                </div>
+            `;
+            resultsDiv.style.display = 'block';
+        }
+        
+        function showNoResults(type, query) {
+            const resultsDiv = document.getElementById(`${type}-results`);
+            resultsDiv.innerHTML = `
+                <div class="loading">
+                    <i class="fas fa-search"></i> No airports found for "${query}"
+                </div>
+            `;
+            resultsDiv.style.display = 'block';
+        }
+        
+        // ========== SELECTION FUNCTIONS ==========
+        function selectAirport(type, airportData) {
+            // Store selection
+            state[type] = airportData;
+            state.currentSearch[type] = airportData;
+            
+            // Update UI
+            const selectedDiv = document.getElementById(`${type}-selected`);
+            selectedDiv.style.display = 'block';
+            document.getElementById(`${type}-code`).textContent = airportData.iata;
+            document.getElementById(`${type}-name`).textContent = airportData.name;
+            document.getElementById(`${type}-location`).textContent = 
+                `${airportData.city}, ${airportData.country}`;
+            
+            // Update hidden input
+            document.getElementById(`${type}-input`).value = airportData.iata;
+            
+            // Hide search results and clear search box (but keep text for reference)
+            hideResults(type);
+            
+            // Check form completion and calculate distance
+            checkFormCompletion();
+            
+            // Calculate and show distance estimate
+            if (state.origin && state.destination) {
+                calculateAndShowDistance();
+            }
+        }
+        
+        function clearSelection(type) {
+            // Clear state
+            state[type] = null;
+            state.currentSearch[type] = null;
+            
+            // Update UI
+            document.getElementById(`${type}-selected`).style.display = 'none';
+            document.getElementById(`${type}-input`).value = '';
+            document.getElementById(`${type}-search`).value = '';
+            document.getElementById(`${type}-search`).focus();
+            
+            // Hide distance estimate
+            document.getElementById('distance-estimate').style.display = 'none';
+            
+            // Disable submit button
+            document.getElementById('submit-btn').disabled = true;
+        }
+        
+        // ========== DISTANCE CALCULATION ==========
+        function calculateAndShowDistance() {
+            if (!state.origin || !state.destination) return;
+            
+            // Haversine formula
+            const distance = calculateDistance(
+                state.origin.lat, state.origin.lng,
+                state.destination.lat, state.destination.lng
+            );
+            
+            const emissions = distance * CONFIG.emissionsFactor;
+            const trees = emissions / CONFIG.treeFactor;
+            
+            // Update display
+            document.getElementById('distance-value').textContent = 
+                `${distance.toFixed(0)} km`;
+            document.getElementById('emissions-value').textContent = 
+                `${emissions.toFixed(1)} kg`;
+            document.getElementById('tree-equivalent').textContent = 
+                trees.toFixed(1);
+            
+            // Show distance estimate
+            document.getElementById('distance-estimate').style.display = 'block';
+        }
+        
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+        
+        // ========== FORM VALIDATION ==========
+        function checkFormCompletion() {
+            const origin = document.getElementById('origin-input').value;
+            const dest = document.getElementById('dest-input').value;
+            const isValid = origin && dest && origin !== dest;
+            
+            document.getElementById('submit-btn').disabled = !isValid;
+            
+            return isValid;
+        }
+        
+        function validateForm() {
+            const origin = document.getElementById('origin-input').value;
+            const dest = document.getElementById('dest-input').value;
+            
+            if (!origin || !dest) {
+                showError('origin', 'Please select both airports.');
+                return false;
+            }
+            
+            if (origin === dest) {
+                showError('origin', 'Origin and destination cannot be the same.');
+                showError('dest', 'Origin and destination cannot be the same.');
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // ========== UI HELPER FUNCTIONS ==========
+        function showError(type, message) {
+            const errorDiv = document.getElementById(`${type}-error`);
+            errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+            errorDiv.style.display = 'block';
+            
+            // Auto-hide error after 5 seconds
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        function hideError(type) {
+            document.getElementById(`${type}-error`).style.display = 'none';
+        }
+        
+        function hideResults(type) {
+            document.getElementById(`${type}-results`).style.display = 'none';
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // ========== KEYBOARD SHORTCUTS ==========
+        document.addEventListener('keydown', function(e) {
+            // Escape closes search results
+            if (e.key === 'Escape') {
+                hideResults('origin');
+                hideResults('dest');
+            }
+            
+            // Tab navigation between search boxes
+            if (e.key === 'Tab') {
+                setTimeout(() => {
+                    const active = document.activeElement;
+                    if (active.id === 'origin-search' && state.origin) {
+                        document.getElementById('origin-search').value = state.origin.iata;
+                    }
+                    if (active.id === 'dest-search' && state.destination) {
+                        document.getElementById('dest-search').value = state.destination.iata;
+                    }
+                }, 10);
+            }
+        });
+        
+        // ========== DEBUG FUNCTIONS ==========
+        window.debugState = function() {
+            console.log('Current State:', state);
+            console.log('Origin:', state.origin);
+            console.log('Destination:', state.destination);
+        };
+    </script>
+</body>
+</html>
