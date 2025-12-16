@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Flight Emissions Dashboard</title>
+
+    <!-- Leaflet CSS -->
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+
+    <!-- Leaflet JS -->
+    <script
+        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+    </script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        #map {
+            height: 500px;
+            margin-top: 10px;
+            flex: 1;
+        }
+
+        .cards {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+        }
+
+        .card {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            width: 220px;
+        }
+
+        .main-layout {
+            display: flex;
+            gap: 20px;
+        }
+
+        .sidebar {
+            width: 250px;
+        }
+
+        .trip-list label {
+            cursor: pointer;
+        }
+
+        .trip-list input {
+            margin-right: 6px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Flight Carbon Emissions</h2>
+
+<a href="/create_trip">Add Trip</a> |
+<a href="/logout">Logout</a>
+
+<!-- Analytics cards -->
+<div class="cards">
+    <div class="card">
+        <h4>Total Trips</h4>
+        <p>{{ trips|length }}</p>
+    </div>
+
+    <div class="card">
+        <h4>CO₂ Emissions</h4>
+        <p id="total-emissions">{{ total_emissions | round(1) }} kg</p>
+    </div>
+
+    <div class="card">
+        <h4>Tree Equivalent</h4>
+        <p id="tree-equivalent">{{ (total_emissions / 21) | round(1) }} trees</p>
+    </div>
+</div>
+
+<div class="main-layout">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h4>Your Trips</h4>
+
+        <div id="trip-list" class="trip-list">
+            {% for t in trips %}
+            <label>
+                <input
+                    type="checkbox"
+                    class="trip-checkbox"
+                    data-trip-id="{{ loop.index0 }}"
+                    checked
+                >
+                <strong>{{ t.origin_code }}</strong> → <strong>{{ t.dest_code }}</strong>
+                <small style="color: #666;">
+                    ({{ t.distance_km | round(0) }} km)
+                </small>
+            </label>
+            <br>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Map -->
+    <div id="map"></div>
+
+</div>
+
+<script>
+    const map = L.map('map').setView([40, -20], 2);
+
+    const tripLayers = {};
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const trips = [
+        {% for t in trips %}
+        {
+            id: {{ loop.index0 }},
+            origin: [{{ t.origin_lat }}, {{ t.origin_lng }}],
+            dest: [{{ t.dest_lat }}, {{ t.dest_lng }}],
+            origin_code: "{{ t.origin_code }}",
+            dest_code: "{{ t.dest_code }}",
+            emissions: {{ t.emissions_kg }},
+            distance: {{ t.distance_km }}
+        },
+        {% endfor %}
+    ];
+
+    trips.forEach(t => {
+        const line = L.polyline([t.origin, t.dest], { color: 'red' })
+            .bindPopup(
+                `${t.origin_code} → ${t.dest_code}<br>
+                 Distance: ${t.distance.toFixed(0)} km<br>
+                 CO₂: ${t.emissions.toFixed(1)} kg`
+            );
+
+        const originMarker = L.circleMarker(t.origin, { radius: 5 });
+        const destMarker = L.circleMarker(t.dest, { radius: 5 });
+
+        // Add to map initially
+        line.addTo(map);
+        originMarker.addTo(map);
+        destMarker.addTo(map);
+
+        // Store layers
+        tripLayers[t.id] = {
+            line,
+            originMarker,
+            destMarker,
+            emissions: t.emissions
+        };
+    });
+    fitMapToVisibleTrips();
+
+    function updateAnalytics() {
+        let total = 0;
+
+        document.querySelectorAll(".trip-checkbox").forEach(cb => {
+            const id = cb.dataset.tripId;
+            if (cb.checked) {
+                total += tripLayers[id].emissions;
+            }
+        });
+
+        document.getElementById("total-emissions").innerText =
+            total.toFixed(1) + " kg";
+
+        document.getElementById("tree-equivalent").innerText =
+            (total / 21).toFixed(1) + " trees";
+    }
+
+    document.querySelectorAll(".trip-checkbox").forEach(cb => {
+        cb.addEventListener("change", e => {
+            const id = e.target.dataset.tripId;
+            const layers = tripLayers[id];
+
+            if (e.target.checked) {
+                layers.line.addTo(map);
+                layers.originMarker.addTo(map);
+                layers.destMarker.addTo(map);
+            } else {
+                map.removeLayer(layers.line);
+                map.removeLayer(layers.originMarker);
+                map.removeLayer(layers.destMarker);
+            }
+
+            updateAnalytics();
+            fitMapToVisibleTrips();
+        });
+    });
+
+    function fitMapToVisibleTrips() {
+        const bounds = [];
+
+        document.querySelectorAll(".trip-checkbox").forEach(cb => {
+            if (cb.checked) {
+                const id = cb.dataset.tripId;
+                bounds.push(tripLayers[id].line.getBounds());
+            }
+        });
+
+        if (bounds.length > 0) {
+            const combined = bounds.reduce((acc, b) => acc.extend(b), bounds[0]);
+            map.fitBounds(combined, { padding: [30, 30] });
+        }
+    }
+</script>
+
+</body>
+</html>

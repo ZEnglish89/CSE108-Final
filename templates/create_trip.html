@@ -1,0 +1,21 @@
+<h2>Create Flight Trip</h2>
+
+<form method="post">
+    <label>Origin:</label>
+    <select name="origin">
+        {% for code in airports %}
+            <option value="{{ code }}">{{ code }}</option>
+        {% endfor %}
+    </select>
+
+    <label>Destination:</label>
+    <select name="destination">
+        {% for code in airports %}
+            <option value="{{ code }}">{{ code }}</option>
+        {% endfor %}
+    </select>
+
+    <button type="submit">Add Trip</button>
+</form>
+
+<a href="/">Back to Dashboard</a>
