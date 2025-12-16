@@ -303,6 +303,7 @@ def delete_all_trips():
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
+#this path is unused because the JS which would connect to it was not able to be completed in time.
 @app.route("/edit_trip/<int:trip_id>", methods=["GET", "POST"])
 @login_required
 def edit_trip(trip_id):

@@ -198,21 +198,23 @@
                 {% for t in trips %}
                 <div class="trip-item" id="trip-{{ t.id }}">
                     <div class="trip-info" onclick="toggleTripCheckbox({{ loop.index0 }})">
+<!-- Removing this checkbox because we couldn't give it functionality in time.
                         <input type="checkbox" 
                                class="trip-checkbox" 
                                id="checkbox-{{ loop.index0 }}"
                                data-trip-id="{{ loop.index0 }}"
-                               checked>
+                               checked>-->
                         <strong>{{ t.origin_code }}</strong> → <strong>{{ t.dest_code }}</strong>
                         <small style="color: #666;">
                             ({{ t.distance_km | round(0) }} km, {{ t.emissions_kg | round(1) }} kg CO₂)
                         </small>
                     </div>
                     <div class="trip-actions">
+<!-- Removing this button because the associated JS was not ready to roll out.
                         <button class="edit-btn" onclick="editTrip({{ t.id }})" 
                                 title="Edit this trip">
                             <i class="fas fa-edit"></i>
-                        </button>
+                        </button>-->
                         <button class="delete-btn" onclick="deleteTrip({{ t.id }}, '{{ t.origin_code }}', '{{ t.dest_code }}')" 
                                 title="Delete this trip">
                             <i class="fas fa-trash"></i>
@@ -268,7 +270,21 @@
         checkbox.checked = !checkbox.checked;
         checkbox.dispatchEvent(new Event('change'));
     }
-    
+    /* unused/incomplete
+    function editTrip(tripId){
+        //show loading
+        const tripElement = document.getElementById(`trip-${tripId}`);
+        tripElement.innerHTML = '<div style = "padding: 10px; text-align: center;">Editing...</div>';
+
+        //send PUT request
+        fetch(`/edit_trip/${tripId}`,{
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+    }
+*/
     // Function to delete a single trip
     function deleteTrip(tripId, origin, dest) {
         if (confirm(`Delete trip from ${origin} to ${dest}?`)) {
