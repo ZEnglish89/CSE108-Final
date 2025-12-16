@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<head>
+    <title>Methodology - Flight Emissions</title>
+
+    <!-- using the same stylesheets as the dashboard for brevity. -->
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+</head>
+<body>
+    <h2>Methodology for Emissions Calculations</h2>
+    <div class="nav-links">
+    <a href="/">Return to Dashboard</a>
+
+    <p>
+        The data used for our airports is sourced from the Global Airport Database or GADB. This Database includes latitude-longitude coordinates for each airport,
+        which we then use to calculate an as-the-crow-flies distance for each trip. This distance is then used alongside the UK government's Greenhouse Gas reports(similar
+        figures were not readily available from the US government), which contain an estimate of Carbon Dioxide emissions per kilometer per passenger,
+        in order to calculate a value of emissions over the course of the user's trips. This value can be easily used to determine a "tree equivalent" for the user's travel
+        by dividing by one estimate of the Carbon Dioxide absorbed by the average mature tree over the course of a single year.
+        <br>Once these values have been calculated on a per-passenger basis, they may be easily scaled up to a value for the entire flight by multiplying by 160, the Official
+        Aviation Guide's estimate for the average ridership on a commercial flight. This may give the user a picture of not just their own emissions but the cumulative
+        emissions of themselves and every flight they have held a seat on. This value is typically shockingly high even when the user travels infrequently and over short distances.
+    </p>
+    <a href="https://www.partow.net/miscellaneous/airportdatabase/">Global Airport Database</a>
+    <a href="https://www.gov.uk/government/publications/greenhouse-gas-reporting-conversion-factors-2022">UK Greenhouse Gas Reports 2022</a>
+    <a href="https://www.oag.com/blog/average-flight-capacity-increasing-at-fastest-rate-ever#:~:text=However%2C%20as%20we%20finally%20leave,on%20each%20and%20every%20flight.">Official Aviation Guide</a>
+</body>

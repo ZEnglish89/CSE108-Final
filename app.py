@@ -102,7 +102,7 @@ def haversine(lat1, lon1, lat2, lon2):
 
 def estimate_emissions(distance_km):
     """Estimate CO2 emissions for a flight."""
-    return distance_km * 0.115  # kg CO2 per km
+    return distance_km * 0.154  # kg CO2 per km.
 
 def get_airports_dict():
     """
@@ -131,12 +131,19 @@ def get_airports_dict():
 def dashboard():
     trips = Trip.query.filter_by(user_id=current_user.id).all()
     total_emissions = sum(t.emissions_kg for t in trips)
-    
+    whole_flight_emissions = total_emissions*160 #average number of passengers across all plane types.
+
     return render_template(
         "dashboard.html",
         trips=trips,
-        total_emissions=total_emissions
+        total_emissions=total_emissions,
+        whole_flight = whole_flight_emissions
     )
+
+@app.route("/methodology")
+@login_required
+def methodology():
+    return render_template("methodology.html")
 
 @app.route("/create_trip", methods=["GET", "POST"])
 @login_required

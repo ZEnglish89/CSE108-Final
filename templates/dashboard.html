@@ -136,10 +136,14 @@
 <h2>✈️ Flight Carbon Emissions Dashboard</h2>
 
 <div class="nav-links">
-    <a href="/create_trip">➕ Add Trip</a> |
+    <a href="/create_trip">➕ Add Trip</a>| 
+    <a href="/methodology">View Methodology</a>| 
     <a href="/logout">🚪 Logout</a>
 </div>
-
+<!--<form>
+    <a id="Whole" href ="?perPass=false">Calculate Emissions for Whole Flight</a><br>
+    <a id="Pass" href ="?perPass=true">Calculate Emissions Per Passenger</a>
+</form>-->
 <!-- Analytics cards -->
 <div class="cards">
     <div class="card">
@@ -155,6 +159,16 @@
     <div class="card">
         <h4>🌳 Tree Equivalent</h4>
         <p id="tree-equivalent">{{ (total_emissions / 21) | round(1) }} trees</p>
+    </div>
+    
+    <div class="card">
+        <h4>🌫️ CO₂ Total for all Passengers</h4>
+        <p id="whole-flight-emissions">{{whole_flight|round(1)}} kg</p>
+    </div>
+
+    <div class="card">
+        <h4>🌳 Tree Equivalent Total for all Passengers</h4>
+        <p id="tree-equivalent">{{ (whole_flight / 21) | round(1) }} trees</p>
     </div>
 </div>
 

@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }).addTo(map);
 
     const tripLayers = {};
-    
+
     // ========== GEODESIC CALCULATION FUNCTIONS ==========
     
     function calculateGeodesicPoints(lat1, lon1, lat2, lon2, numPoints = 100) {
@@ -418,4 +418,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+/* this ended up not being the proper way to implement what I wanted.
+    var perPass = false;
+//Helper functions for AJAX
+    function wholeFlight(){
+        console.log("whole Flight called")
+        if (perPass){
+            emissions = document.getElementById("total-emissions").value
+            document.getElementById("total-emissions").value = Math.round((Number(emissions))/160);
+            perPass = true;
+        }
+    }
 
+    function perPassenger(){
+        console.log("per Passenger called");
+        if (!perPass){
+            emissions = document.getElementById("total-emissions").value
+            document.getElementById("total-emissions").value = Math.round((Number(emissions))*160);
+            perPass = false;
+        }
+    }
+
+*/
